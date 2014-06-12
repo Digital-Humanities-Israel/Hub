@@ -6,8 +6,11 @@ from xml.etree import ElementTree as ET
 
 out_fna = "authors_info%s" % time.strftime('%Y%m%d_%H%M%S')#gives filename to outputfile a
 out_fnb = "authors_altnames%s" % time.strftime('%Y%m%d_%H%M%S')
+out_fnc = "lib_to_viaf%s" % time.strftime('%Y%m%d_%H%M%S')
 out_fa = open(out_fna + '.txt', 'w')
 out_fb = open(out_fnb + '.txt', 'w')
+out_fc = open(out_fnc + '.txt', 'w')
+
 
 #def splityears()
  #   birthyear= re.compile(r'\d{4}-\d{4}')#find regex to split and save the first 4 digits in one, the last in the other
@@ -17,49 +20,38 @@ out_fb = open(out_fnb + '.txt', 'w')
 
 
 def process_xml(f):
-    tree = ET.parse(f)##enter file name
+    tree = ET.parse(f)
     root= tree.getroot()
     
     for record in root.getchildren():
         libid= record.find('.//controlfield/[@tag="001"]').text 
 
-#Element.findall() finds only elements with a tag which are direct children of the current element. 
-#Element.find() finds the first child with a particular tag, and Element.text accesses the element’s text content. 
-#Element.get() accesses the element’s attributes:
-#rank = country.find('rank').text
-# name = country.get('name')
-       
-        for datafield in record.getchildren(): #change getchildren to grandchildren
+        for datafield in record.getchildren(): 
             viaf=None
             if datafield.find('./[@tag="901"]') is not None:
                  viaf= datafield.find('./subfield/[@code="a"]')   
                  viaf= viaf.text   
-                 print (libid, viaf)#also make it write it into a file
-            
+                 #print (libid, viaf)
+                 out_fc.write("{0}\t{1}\n".format(libid, viaf))
             for subfield in datafield.getchildren():
-                altname= datafield.find('./subfield/[@code="a"]') 
-                if altname is not None:
+                 altname= datafield.find('./subfield/[@code="a"]') 
+                 if altname is not None:
                     altname=altname.text
-                    #print(altname)#just to check. works (but gets false positives from fields other than 100 and 400)
-                lang='nolang'
-                tag= datafield.get('tag')
-                #print(tag)#just to check.works.
-                if tag is '100': #here starts the problem
-                    print('trial')
-                    #print(tag)#just to check - does not work!
-                    lang= subfield.find('./[@code="9"]').text
-                    if lang is 'heb':  
-                        print(lang)
-                        lifeyears = subfield.find('./[@code="d"]').text  
+                 tag= datafield.get('tag')
+                 lang= datafield.find('./subfield/[@code="9"]') 
+                 if tag== '100': 
+                        if lang.text== 'heb':  
+                            lifeyears = datafield.find('./subfield/[@code="d"]')  
                         #birthanddeath = splityears(lifeyears.text) ? at some point?    
-                        Cname= altname.text
-                        print (libid, viaf, Cname, lifeyears)
-                        out_fa.write("{0}, {1}, {2}, {3}\n".format(libid, viaf, Cname, lifeyears))
-                elif tag is 400:
-                    print(libid, altname, lang)
-                    out_fb.write("{0}, {1}, {2}\n".format(libid, altname, lang))
+                            Cname= altname
+                            if lifeyears is not None:
+                                #print (libid, viaf, Cname, lifeyears)
+                                out_fa.write("{0}\t{1}\t{2}\n".format(libid, Cname, lifeyears.text))
+                 elif tag== '400':
+                        if lang is not None:
+                            #print(libid, altname, lang.text) #just lang doesn't work
+                            out_fb.write("{0}\t{1}\t{2}\n".format(libid, altname, lang.text))
                 
-#do we really need the argv business? 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
